@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Linking,
     Modal,
     ScrollView,
     StyleSheet,
@@ -11,7 +13,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { purchasePremium, restorePurchases } from '../lib/revenuecat';
+import { getMonthlyPackageDetails, purchasePremium, restorePurchases } from '../lib/revenuecat';
 import { useSubscription } from '../context/Subscriptioncontext';
 
 // ─── Feature row ─────────────────────────────────────────────────────────────
@@ -63,7 +65,18 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [restoring, setRestoring] = useState(false);
-    const { devTogglePremium } = useSubscription();
+    const [priceText, setPriceText] = useState('$7.99');
+    const { devTogglePremium, refreshSubscription } = useSubscription();
+
+    useEffect(() => {
+        if (visible) {
+            getMonthlyPackageDetails().then((pkg) => {
+                if (pkg.priceString) {
+                    setPriceText(pkg.priceString);
+                }
+            });
+        }
+    }, [visible]);
 
     const reasonText = {
         podcast: 'لقد وصلت إلى حد البودكاست المجاني هذا الشهر',
@@ -76,8 +89,8 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
         try {
             const success = await purchasePremium();
             if (success) {
+                await refreshSubscription();
                 onClose();
-                // refresh app state
                 router.replace('/(tabs)');
             }
         } finally {
@@ -89,7 +102,10 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
         setRestoring(true);
         try {
             const success = await restorePurchases();
-            if (success) onClose();
+            if (success) {
+                await refreshSubscription();
+                onClose();
+            }
         } finally {
             setRestoring(false);
         }
@@ -99,6 +115,14 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
         devTogglePremium();
         onClose();
         router.replace('/(tabs)');
+    };
+
+    const openLegalUrl = async (url: string) => {
+        try {
+            await WebBrowser.openBrowserAsync(url);
+        } catch {
+            Linking.openURL(url);
+        }
     };
 
     return (
@@ -174,9 +198,20 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
 
                     {/* Price */}
                     <View style={styles.priceBox}>
-                        <Text style={styles.priceAmount}>7.99$</Text>
-                        <Text style={styles.pricePeriod}>شهرياً · ≈ 29.99 ريال</Text>
-                        <Text style={styles.priceNote}>يمكن إلغاء الاشتراك في أي وقت</Text>
+                        <Text style={styles.priceAmount}>{priceText}</Text>
+                        <Text style={styles.pricePeriod}>شهرياً · تجديد تلقائي</Text>
+                        <Text style={styles.priceNote}>يمكن إلغاء الاشتراك في أي وقت من إعدادات المتجر</Text>
+                    </View>
+
+                    {/* Legal Links (App Store Requirement 3.1.2) */}
+                    <View style={styles.legalBox}>
+                        <TouchableOpacity onPress={() => openLegalUrl('https://ourpodcast.app/privacy')}>
+                            <Text style={styles.legalLink}>سياسة الخصوصية</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.legalDivider}>•</Text>
+                        <TouchableOpacity onPress={() => openLegalUrl('https://ourpodcast.app/terms')}>
+                            <Text style={styles.legalLink}>شروط الاستخدام (EULA)</Text>
+                        </TouchableOpacity>
                     </View>
 
                 </ScrollView>
@@ -189,7 +224,7 @@ const PaywallScreen: React.FC<PaywallProps> = ({ visible, onClose, reason = 'gen
                 >
                     {loading
                         ? <ActivityIndicator color="#1A1A00" />
-                        : <Text style={styles.ctaBtnText}>اشترك الآن</Text>
+                        : <Text style={styles.ctaBtnText}>اشترك الآن ({priceText})</Text>
                     }
                 </TouchableOpacity>
 
@@ -398,6 +433,25 @@ const styles = StyleSheet.create({
     },
     priceNote: {
         color: '#555',
+        fontSize: 12,
+    },
+
+    // ── Legal ─────────────────────────────────────────
+    legalBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 8,
+        paddingBottom: 16,
+    },
+    legalLink: {
+        color: '#666',
+        fontSize: 12,
+        textDecorationLine: 'underline',
+    },
+    legalDivider: {
+        color: '#444',
         fontSize: 12,
     },
 

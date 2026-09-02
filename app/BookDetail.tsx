@@ -12,7 +12,9 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import PaywallScreen from '../components/PayWallScreen';
 import { useBookDetail } from '../hooks/useBookdetail';
+import { useContentGate } from '../hooks/useContentgate';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -155,13 +157,18 @@ const BookDetailScreen = () => {
     const { bookId } = useLocalSearchParams<{ bookId: string }>();
     const insets = useSafeAreaInsets();
 
-
-
     const {
         book, pages, currentPage, totalPages,
         loading, error, retry, nextPage, prevPage,
     } = useBookDetail(Number(bookId));
 
+    // ── Content gate for subscription ────────────────────────────────────────
+    const {
+        showPaywall,
+        setShowPaywall,
+        paywallReason,
+        checkAndGateBook,
+    } = useContentGate();
 
     // ── Reading settings state ────────────────────────────────────────────────
     const [theme, setTheme] = useState<Theme>('dark');
@@ -177,6 +184,14 @@ const BookDetailScreen = () => {
         const raw = authors[0].name;
         const parts = raw.split(',');
         return parts.length > 1 ? `${parts[1].trim()} ${parts[0].trim()}` : raw;
+    };
+
+    const handleStartReading = () => {
+        const id = bookId || String(book?.id || '');
+        const allowed = checkAndGateBook(id, book?.title);
+        if (allowed) {
+            setReadingMode(true);
+        }
     };
 
     // ── Loading ───────────────────────────────────────────────────────────────
@@ -387,13 +402,20 @@ const BookDetailScreen = () => {
                 {/* Read button */}
                 <TouchableOpacity
                     style={styles.readBtn}
-                    onPress={() => setReadingMode(true)}
+                    onPress={handleStartReading}
                 >
                     <Ionicons name="book-outline" size={20} color="#1A1A00" />
                     <Text style={styles.readBtnText}>ابدأ القراءة</Text>
                 </TouchableOpacity>
 
             </ScrollView>
+
+            {/* Subscription Paywall Modal */}
+            <PaywallScreen
+                visible={showPaywall}
+                onClose={() => setShowPaywall(false)}
+                reason={paywallReason}
+            />
         </SafeAreaView>
     );
 };

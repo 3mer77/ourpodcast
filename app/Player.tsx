@@ -10,14 +10,16 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { useAuth } from "../context/AuthContext";
-import { useAudioStore } from "../store/useAudioStore";
 import PaywallScreen from '../components/PayWallScreen';
-import { useContentGate } from "../hooks/useContentgate"; // ✅ Import the gate
+import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/Subscriptioncontext";
+import { useContentGate } from "../hooks/useContentgate";
+import { useAudioStore } from "../store/useAudioStore";
 
 export default function Player() {
-    const { audioUrl, title, image, podcastId } = useLocalSearchParams(); // ✅ Added podcastId
+    const { audioUrl, title, image, podcastId, episodeId } = useLocalSearchParams();
     const { user, loading } = useAuth();
+    const { isPremium } = useSubscription();
 
     const {
         sound,
@@ -48,11 +50,11 @@ export default function Player() {
         if (!audioUrl || !user) return;
         
         // Get podcast ID from params or generate from URL
-        const id = podcastId as string || audioUrl.toString();
-        const canAccess = checkAndGatePodcast(id);
+        const id = (podcastId as string) || audioUrl.toString();
+        const canAccess = checkAndGatePodcast(id, title as string);
         setHasAccess(canAccess);
         setCheckingAccess(false);
-    }, [audioUrl, user, podcastId]);
+    }, [audioUrl, user, podcastId, title]);
 
     // ✅ Auth gate — redirect to login if not signed in
     useEffect(() => {
@@ -75,9 +77,11 @@ export default function Player() {
                 url: audioUrl as string,
                 title: title as string,
                 image: image as string,
+                episodeId: (episodeId as string) || undefined,
+                podcastId: (podcastId as string) || undefined,
             });
         }
-    }, [audioUrl, user, hasAccess, checkingAccess]);
+    }, [audioUrl, user, hasAccess, checkingAccess, currentEpisode?.url, sound, play, title, image, episodeId, podcastId]);
 
     // 🎧 REAL-TIME SYNC
     useEffect(() => {
@@ -157,8 +161,8 @@ export default function Player() {
                         setShowPaywall(false);
                         // Re-check access after purchase/restore
                         if (audioUrl) {
-                            const id = podcastId as string || audioUrl.toString();
-                            const canAccess = checkAndGatePodcast(id);
+                            const id = (podcastId as string) || audioUrl.toString();
+                            const canAccess = checkAndGatePodcast(id, title as string);
                             setHasAccess(canAccess);
                         }
                     }}
@@ -201,11 +205,19 @@ export default function Player() {
     // ── Player UI (has access) ────────────────────────────────────────────────
     return (
         <View style={styles.container}>
-            {/* Premium badge (optional) */}
+            {/* Back button */}
+            <TouchableOpacity
+                style={styles.headerBackBtn}
+                onPress={() => router.back()}
+            >
+                <Ionicons name="chevron-down" size={26} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Premium badge */}
             <View style={styles.premiumBadge}>
                 <Ionicons name="diamond" size={14} color="#F5C842" />
                 <Text style={styles.premiumBadgeText}>
-                    {useSubscription().isPremium ? "مميز ⭐" : "مجاني"}
+                    {isPremium ? "مميز ⭐" : "مجاني"}
                 </Text>
             </View>
 
@@ -261,9 +273,6 @@ export default function Player() {
     );
 }
 
-// Add this helper function at the top or inside component
-import { useSubscription } from "../context/Subscriptioncontext";
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -274,6 +283,18 @@ const styles = StyleSheet.create({
     },
     center: {
         gap: 16,
+    },
+    headerBackBtn: {
+        position: 'absolute',
+        top: 50,
+        left: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#1A1A1A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
     },
 
     // ── Auth gate UI ──────────────────────────────────

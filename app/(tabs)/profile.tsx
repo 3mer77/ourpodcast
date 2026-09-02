@@ -67,8 +67,7 @@ const SectionLabel = ({ label }: { label: string }) => (
 
 const ProfileScreen = () => {
     const { user, signOut } = useAuth();
-    const { isPremium, devTogglePremium,
-        podcastsRemaining, booksRemaining } = useSubscription();
+    const { isPremium, devTogglePremium, podcastsRemaining, booksRemaining, usage } = useSubscription();
     const [showPaywall, setShowPaywall] = useState(false);
 
     const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
@@ -199,6 +198,43 @@ const ProfileScreen = () => {
                         />
                     )}
                 </View>
+
+                {/* ── Free usage details ────────────────────────────────── */}
+                {!isPremium && (usage.playedPodcasts.length > 0 || usage.playedBooks.length > 0) && (
+                    <>
+                        <SectionLabel label="المحتوى المستغل هذا الشهر (المجاني)" />
+                        <View style={styles.section}>
+                            {usage.playedPodcasts.map((p, idx) => (
+                                <React.Fragment key={`p-${idx}`}>
+                                    <View style={styles.row}>
+                                        <Text style={styles.rowValue}>بودكاست مستخدم</Text>
+                                        <View style={styles.rowRight}>
+                                            <Text style={styles.rowLabel}>{p.title ?? `بودكاست #${p.id}`}</Text>
+                                            <Ionicons name="headset-outline" size={18} color="#0bd46c" />
+                                        </View>
+                                    </View>
+                                    {(idx < usage.playedPodcasts.length - 1 || usage.playedBooks.length > 0) && (
+                                        <View style={styles.separator} />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                            {usage.playedBooks.map((b, idx) => (
+                                <React.Fragment key={`b-${idx}`}>
+                                    <View style={styles.row}>
+                                        <Text style={styles.rowValue}>كتاب مستخدم</Text>
+                                        <View style={styles.rowRight}>
+                                            <Text style={styles.rowLabel}>{b.title ?? `كتاب #${b.id}`}</Text>
+                                            <Ionicons name="book-outline" size={18} color="#F5C842" />
+                                        </View>
+                                    </View>
+                                    {idx < usage.playedBooks.length - 1 && (
+                                        <View style={styles.separator} />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </View>
+                    </>
+                )}
 
                 {/* ── App ──────────────────────────────────────────────── */}
                 <SectionLabel label="التطبيق" />

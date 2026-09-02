@@ -117,12 +117,19 @@ export const usePodcastDetail = (podcastId: string) => {
 
             cursorRef.current = data.nextCursor;
 
-            setState((s) => ({
-                ...s,
-                episodes: [...s.episodes, ...data.episodes.map(toEpisode)],
-                loadingMore: false,
-                hasMore: data.nextCursor !== null,
-            }));
+            setState((s) => {
+                const existingIds = new Set(s.episodes.map((e) => e.id));
+                const newEpisodes = data.episodes
+                    .map(toEpisode)
+                    .filter((e) => !existingIds.has(e.id));
+
+                return {
+                    ...s,
+                    episodes: [...s.episodes, ...newEpisodes],
+                    loadingMore: false,
+                    hasMore: data.nextCursor !== null && newEpisodes.length > 0,
+                };
+            });
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Unknown error';
             setState((s) => ({ ...s, loadingMore: false, error: msg }));

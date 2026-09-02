@@ -74,6 +74,67 @@ export const getOfferings = async (): Promise<PurchasesOffering | null> => {
     }
 };
 
+// ─── Customer Info Update Listener ──────────────────────────────────────────────
+
+export const addCustomerInfoListener = (callback: (isPremium: boolean) => void) => {
+    if (IS_DEV) return () => {};
+
+    try {
+        const listener = (info: CustomerInfo) => {
+            const active = info.entitlements.active[PREMIUM_ENTITLEMENT] !== undefined;
+            callback(active);
+        };
+        Purchases.addCustomerInfoUpdateListener(listener);
+        return () => {
+            try {
+                Purchases.removeCustomerInfoUpdateListener(listener);
+            } catch (e) {
+                // Ignore cleanup error
+            }
+        };
+    } catch (e) {
+        console.error('addCustomerInfoListener error:', e);
+        return () => {};
+    }
+};
+
+// ─── Get Monthly Package Details ───────────────────────────────────────────────
+
+export type PackageDetails = {
+    priceString: string;
+    title?: string;
+    description?: string;
+};
+
+export const getMonthlyPackageDetails = async (): Promise<PackageDetails> => {
+    if (IS_DEV) {
+        return {
+            priceString: '$7.99',
+            title: 'اشتراك شهري',
+            description: 'وصول غير محدود لجميع المحتويات',
+        };
+    }
+
+    try {
+        const offering = await getOfferings();
+        const pkg = offering?.monthly ?? offering?.availablePackages[0];
+        if (pkg) {
+            return {
+                priceString: pkg.product.priceString,
+                title: pkg.product.title,
+                description: pkg.product.description,
+            };
+        }
+    } catch (e) {
+        console.error('getMonthlyPackageDetails error:', e);
+    }
+
+    return {
+        priceString: '$7.99',
+        title: 'اشتراك شهري',
+    };
+};
+
 // ─── Purchase ─────────────────────────────────────────────────────────────────
 
 export const purchasePremium = async (): Promise<boolean> => {
@@ -85,14 +146,14 @@ export const purchasePremium = async (): Promise<boolean> => {
 
     try {
         const offerings = await Purchases.getOfferings();
-        const monthly = offerings.current?.monthly;
+        const pkg = offerings.current?.monthly ?? offerings.current?.availablePackages[0];
 
-        if (!monthly) {
-            console.warn('No monthly package found');
+        if (!pkg) {
+            console.warn('No monthly or available package found in current offering');
             return false;
         }
 
-        const { customerInfo } = await Purchases.purchasePackage(monthly);
+        const { customerInfo } = await Purchases.purchasePackage(pkg);
         return customerInfo.entitlements.active[PREMIUM_ENTITLEMENT] !== undefined;
     } catch (e: any) {
         if (!e.userCancelled) console.error('purchasePremium error:', e);

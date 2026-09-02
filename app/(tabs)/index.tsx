@@ -191,6 +191,58 @@ const BooksSection = () => {
     );
 };
 
+import { useAudioStore } from '../../store/useAudioStore';
+import { Image } from 'react-native';
+
+const ContinueListeningSection = () => {
+    const { lastEpisode, loadLastEpisode } = useAudioStore();
+
+    React.useEffect(() => {
+        loadLastEpisode();
+    }, []);
+
+    if (!lastEpisode) return null;
+
+    const handleResume = () => {
+        router.push({
+            pathname: '/Player',
+            params: {
+                episodeId: lastEpisode.episodeId,
+                audioUrl:  lastEpisode.url,
+                title:     lastEpisode.title,
+                image:     lastEpisode.image,
+                podcastId: lastEpisode.podcastId,
+            },
+        });
+    };
+
+    return (
+        <View style={styles.continueBox}>
+            <View style={styles.continueHeader}>
+                <Ionicons name="play-circle-outline" size={18} color="#0bd46c" />
+                <Text style={styles.continueTitle}>متابعة الاستماع</Text>
+            </View>
+
+            <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.continueCard}
+                onPress={handleResume}
+            >
+                <Image source={{ uri: lastEpisode.image }} style={styles.continueCover} />
+                <View style={styles.continueInfo}>
+                    <Text numberOfLines={1} style={styles.continueEpisodeTitle}>
+                        {lastEpisode.title}
+                    </Text>
+                    <Text style={styles.continueSub}>انقر للاستكمال من حيث توقفت</Text>
+                </View>
+                <View style={styles.continuePlayBtn}>
+                    <Ionicons name="play" size={16} color="#1A1A00" />
+                </View>
+            </TouchableOpacity>
+        </View>
+    );
+};
+
 const HomeScreen = () => {
     const { hearFirst, youMightLike, loading, error, retry } = useHome();
     const { podcasts } = useArabicPodcast();
@@ -217,6 +269,7 @@ const HomeScreen = () => {
     return (
         <SafeAreaView style={styles.safe}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ContinueListeningSection />
                 <RecentSections />
 
                 <HorizontalSection
@@ -324,6 +377,63 @@ const styles = StyleSheet.create({
     },
     booksLoader: {
         height: 180,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // ── Continue Listening ──────────────────────────────
+    continueBox: {
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    continueHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 6,
+        marginBottom: 8,
+    },
+    continueTitle: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    continueCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1A1500',
+        borderRadius: 14,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#F5C842',
+    },
+    continueCover: {
+        width: 48,
+        height: 48,
+        borderRadius: 10,
+    },
+    continueInfo: {
+        flex: 1,
+        marginHorizontal: 12,
+    },
+    continueEpisodeTitle: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'right',
+    },
+    continueSub: {
+        color: '#888',
+        fontSize: 11,
+        textAlign: 'right',
+        marginTop: 3,
+    },
+    continuePlayBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F5C842',
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -97,12 +97,13 @@ const PodcastDetailScreen = () => {
                             audioUrl:  item.audioUrl,
                             title:     item.title,
                             image:     item.image,
+                            podcastId: podcastId,
                         },
                     })
                 }
             />
         ),
-        []
+        [podcastId]
     );
 
     // ── Loading ───────────────────────────────────────────────────────────────
@@ -143,7 +144,7 @@ const PodcastDetailScreen = () => {
 
             <FlatList
                 data={episodes}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
                 renderItem={renderEpisode}
                 ListHeaderComponent={
                     <PodcastHeader
@@ -155,7 +156,7 @@ const PodcastDetailScreen = () => {
                     />
                 }
                 onEndReached={handleEndReached}
-                onEndReachedThreshold={0.4}
+                onEndReachedThreshold={0.1}
                 ListFooterComponent={loadingMore ? <LoadingFooter /> : null}
                 ListEmptyComponent={
                     <Text style={styles.emptyText}>لا توجد حلقات</Text>

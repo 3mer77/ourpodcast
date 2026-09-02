@@ -25,9 +25,9 @@ export const useContentGate = () => {
     const [paywallReason, setPaywallReason] = useState<GateReason>('general');
 
     // ✅ Returns true if allowed, false if gated
-    const checkAndGatePodcast = (podcastId: string): boolean => {
+    const checkAndGatePodcast = (podcastId: string, title?: string): boolean => {
         if (canPlayPodcast(podcastId)) {
-            recordPodcastPlay(podcastId); // record usage
+            recordPodcastPlay(podcastId, title); // record usage
             return true;
         }
         setPaywallReason('podcast');
@@ -35,9 +35,9 @@ export const useContentGate = () => {
         return false;
     };
 
-    const checkAndGateBook = (bookId: string): boolean => {
+    const checkAndGateBook = (bookId: string, title?: string): boolean => {
         if (canReadBook(bookId)) {
-            recordBookRead(bookId);
+            recordBookRead(bookId, title);
             return true;
         }
         setPaywallReason('book');
